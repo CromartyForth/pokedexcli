@@ -6,23 +6,27 @@ import (
 	"os"
 )
 
-func main() {
+var locationsEP = "https://pokeapi.co/api/v2/location/"
+
+func main(){
 	scanner := bufio.NewScanner(os.Stdin)
 
+	pConfig := Config{}
 	for ;; {
 		fmt.Printf("Pokedex > ")
 		if scanner.Scan() == false {
 			break
 		}
 		query := scanner.Text()
-		if query == "" {
-			break
+		value, ok := getCommands()[query]
+		if ok == false {
+			fmt.Println("Unknown command")
+		} else {
+			value.Callback(&pConfig)
 		}
-		splitWords := cleanInput(query)
-		fmt.Printf("Your command was: %v\n", splitWords[0])
-
 	}
 }
+
 
 
 

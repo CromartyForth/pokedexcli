@@ -1,43 +1,109 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
+	"io"
 )
-
-type cliCommand struct {
-	name        string
-	description string
-	callback    func() error
+type Config struct {
+	Next string
+	Previous string
 }
 
-func getCommands() map[string]cliCommand {
-	var mapCommands = map[string]cliCommand{
+type Location struct {
+	Count    int `json:"count"`
+	Next string    `json:"next"`
+	Previous string `json:"previous"`
+	Results []struct {
+		Name string `json:"name"`
+		Url string `json:"url"`
+	}
+}
+
+type CliCommand struct {
+	Name        string
+	Description string
+	Callback    func(*Config) error
+}
+
+func getCommands() map[string]CliCommand {
+	var mapCommands = map[string]CliCommand{
 		"exit": {
-			name:        "exit",
-			description: "Exit the Pokedex",
-			callback:    commandExit,
+			Name:        "exit",
+			Description: "Exit the Pokedex",
+			Callback:    commandExit,
 		},
 		"help": {
-			name: "help",
-			description: "Displays a help message",
-			callback: commandHelp,
+			Name: "help",
+			Description: "Displays a help message",
+			Callback: commandHelp,
+		},
+		"map": {
+			Name: "map",
+			Description: "Displays the first 20 locations",
+			Callback: commandMap,
 		},
 	}
 	return mapCommands
 }
 
-func commandExit() error {
+func commandExit(config *Config) error {
 	fmt.Println("Closing the Pokedex... Goodbye!")
 	os.Exit(0)
 	return nil
 }
 
-func commandHelp() error {
+func commandHelp(config *Config) error {
 	fmt.Printf("Welcome to the Pokedex!\nUsage:\n")
 	for _, command := range(getCommands()) {
 		// Welcome to the Pokedex!
-		fmt.Printf("%v: %v\n",command.name, command.description)
+		fmt.Printf("%v: %v\n",command.Name, command.Description)
 	}
+	return nil
+}
+
+func commandMap(ptrConfig *Config) error {
+	
+	// is repeated call?
+	url := locationsEP
+	if ptrConfig.Next != "" {
+		url = ptrConfig.Next
+	}
+
+	// make api call
+	res, err := http.Get(url)
+	if err != nil {
+		return fmt.Errorf("Network Error: %v\n", err)
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode > 299 {
+		return fmt.Errorf("HTTP Status Code: %v\n", res.StatusCode)
+	}
+
+	// read response body
+	data, err := io.ReadAll(res.Body)
+	if err != nil {
+		return fmt.Errorf("Reading Error: %v\n", err)
+	}
+
+	// convert Json to go struct
+	pokeLocations := Location{}
+	err = json.Unmarshal(data, &pokeLocations)
+	if err != nil {
+		return fmt.Errorf("JSON Error: %v\n", err)
+	}
+
+	// update config with previous and next urls
+	ptrConfig.Next = pokeLocations.Next
+	ptrConfig.Previous = pokeLocations.Previous
+
+	// print out locations
+	for _, location := range(pokeLocations.Results){
+		fmt.Println(location.Name)
+	}
+
 	return nil
 }
