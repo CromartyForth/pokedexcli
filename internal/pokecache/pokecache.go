@@ -7,7 +7,7 @@ import (
 )
 
 // Initialises a new cache
-func NewCache(duration int) *Cache {
+func NewCache(duration time.Duration) *Cache {
 	newCache := Cache{}
 	newCache.Cache = make(map[string]cacheEntry,0)
 	go newCache.reaper(duration)
@@ -15,10 +15,9 @@ func NewCache(duration int) *Cache {
 }
 
 // go reaper looks after the cache deleting old data
-func (c *Cache) reaper(duration_seconds int) {
+func (c *Cache) reaper(duration time.Duration) {
 
 	// tick tock cache!
-	duration := time.Duration(duration_seconds) * time.Second
 	ticker := time.NewTicker(duration)
 	defer ticker.Stop()
 
