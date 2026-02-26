@@ -77,49 +77,11 @@ func commandMapb(ptrConfig *Config) error {
 	} 
 	url := ptrConfig.Previous
 	
-	// is data already in cache
-	data, ok := poke_cache.Get(url)
-	if ok == false {
-
-		// make api call
-		res, err := http.Get(url)
-		if err != nil {
-			return fmt.Errorf("Network Error: %v\n", err)
-		}
-		defer res.Body.Close()
-
-		if res.StatusCode > 299 {
-			return fmt.Errorf("HTTP Status Code: %v\n", res.StatusCode)
-		}
-
-		// read response body
-		data, err = io.ReadAll(res.Body)
-		if err != nil {
-			return fmt.Errorf("Reading Error: %v\n", err)
-		}
-
-		// put data into cache
-		poke_cache.Add(url, data)
-	} else {
-		fmt.Printf("Read from Cache...\n")
-	}
-
-	// convert Json to go struct
-	pokeLocations := Location{}
-	err := json.Unmarshal(data, &pokeLocations)
+	// check cache, make api call and print result
+	err := map_helper(ptrConfig, url)
 	if err != nil {
-		return fmt.Errorf("JSON Error: %v\n", err)
+		return err
 	}
-
-	// update config with previous and next urls
-	ptrConfig.Next = pokeLocations.Next
-	ptrConfig.Previous = pokeLocations.Previous
-
-	// print out locations
-	for _, location := range(pokeLocations.Results){
-		fmt.Println(location.Name)
-	}
-
 	return nil
 }
 
@@ -131,6 +93,16 @@ func commandMap(ptrConfig *Config) error {
 		url = ptrConfig.Next
 	}
 
+	// check cache, make api call and print result
+	err := map_helper(ptrConfig, url)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func map_helper(ptrConfig *Config, url string) error {
+	
 	// is data already in cache
 	data, ok := poke_cache.Get(url)
 	if ok == false {
