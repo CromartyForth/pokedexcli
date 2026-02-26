@@ -7,8 +7,8 @@ import (
 	"github.com/CromartyForth/pokedexcli/internal/pokecache"
 )
 
-var locationsEP = "https://pokeapi.co/api/v2/location-area/"
-var cache_duration = 7
+var locationsEP = "https://pokeapi.co/api/v2/location-area/?offset=0&limit=20"
+var cache_duration = 20
 var poke_cache = pokecache.NewCache(cache_duration)
 
 func main(){

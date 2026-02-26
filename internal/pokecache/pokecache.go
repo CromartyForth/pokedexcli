@@ -10,7 +10,7 @@ import (
 func NewCache(duration int) *Cache {
 	newCache := Cache{}
 	newCache.Cache = make(map[string]cacheEntry,0)
-	go newCache.reaper(5)
+	go newCache.reaper(duration)
 	return &newCache
 }
 
@@ -24,6 +24,7 @@ func (c *Cache) reaper(duration_seconds int) {
 
 	for range ticker.C{
 		//fmt.Printf("Checked Cache at: %v", t)
+		c.mu.Lock()
 		for key, value := range(c.Cache) {
 			if time.Since(value.createdAt) > duration {
 				// delete cache item
@@ -31,6 +32,7 @@ func (c *Cache) reaper(duration_seconds int) {
 				fmt.Println("Cache Item Deleted")
 			}
 		}
+		c.mu.Unlock()
 	}
 }
 
@@ -59,10 +61,10 @@ func (c *Cache) Get(key string) ([]byte, bool){
 // stores data in the cache
 func (c *Cache) Add(key string, data []byte) {
 	c.mu.Lock()
+	defer c.mu.Unlock()
 	c.Cache[key] = cacheEntry{
 		createdAt: time.Now(),
 		value: data,
 	}
-    defer c.mu.Unlock()
 }
 

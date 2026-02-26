@@ -72,34 +72,41 @@ func commandHelp(config *Config) error {
 func commandMapb(ptrConfig *Config) error {
 	// is on first page
 	if ptrConfig.Previous == "" {
-		fmt.Println("you're on the first page")
+		fmt.Println("You're on the first page")
 		return nil
 	} 
 	url := ptrConfig.Previous
+	
+	// is data already in cache
+	data, ok := poke_cache.Get(url)
+	if ok == false {
 
-	// make api call
-	res, err := http.Get(url)
-	if err != nil {
-		return fmt.Errorf("Network Error: %v\n", err)
-	}
-	defer res.Body.Close()
+		// make api call
+		res, err := http.Get(url)
+		if err != nil {
+			return fmt.Errorf("Network Error: %v\n", err)
+		}
+		defer res.Body.Close()
 
-	if res.StatusCode > 299 {
-		return fmt.Errorf("HTTP Status Code: %v\n", res.StatusCode)
-	}
+		if res.StatusCode > 299 {
+			return fmt.Errorf("HTTP Status Code: %v\n", res.StatusCode)
+		}
 
-	// add res to cache
+		// read response body
+		data, err = io.ReadAll(res.Body)
+		if err != nil {
+			return fmt.Errorf("Reading Error: %v\n", err)
+		}
 
-
-	// read response body
-	data, err := io.ReadAll(res.Body)
-	if err != nil {
-		return fmt.Errorf("Reading Error: %v\n", err)
+		// put data into cache
+		poke_cache.Add(url, data)
+	} else {
+		fmt.Printf("Read from Cache...\n")
 	}
 
 	// convert Json to go struct
 	pokeLocations := Location{}
-	err = json.Unmarshal(data, &pokeLocations)
+	err := json.Unmarshal(data, &pokeLocations)
 	if err != nil {
 		return fmt.Errorf("JSON Error: %v\n", err)
 	}
@@ -151,7 +158,6 @@ func commandMap(ptrConfig *Config) error {
 		fmt.Printf("Read from Cache...\n")
 	}
 
-	fmt.Println(string(data))
 	// convert Json to go struct
 	pokeLocations := Location{}
 	err := json.Unmarshal(data, &pokeLocations)
