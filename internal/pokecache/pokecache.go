@@ -22,12 +22,13 @@ func (c *Cache) reaper(duration_seconds int) {
 	ticker := time.NewTicker(duration)
 	defer ticker.Stop()
 
-	for t := range ticker.C{
-		fmt.Printf("Checked Cache at: %v", t)
+	for range ticker.C{
+		//fmt.Printf("Checked Cache at: %v", t)
 		for key, value := range(c.Cache) {
 			if time.Since(value.createdAt) > duration {
 				// delete cache item
 				delete(c.Cache, key)
+				fmt.Println("Cache Item Deleted")
 			}
 		}
 	}
@@ -49,6 +50,7 @@ func (c *Cache) Get(key string) ([]byte, bool){
     defer c.mu.Unlock()
 	data, ok := c.Cache[key]
 	if ok == false {
+		fmt.Println("Key not in cache")
 		return nil, false
 	}
 	return data.value, true

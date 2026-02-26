@@ -126,8 +126,8 @@ func commandMap(ptrConfig *Config) error {
 
 	// is data already in cache
 	data, ok := poke_cache.Get(url)
-	if ok != true {
-		
+	if ok == false {
+		fmt.Println("Making API call")
 		// make api call
 		res, err := http.Get(url)
 		if err != nil {
@@ -140,17 +140,18 @@ func commandMap(ptrConfig *Config) error {
 		}
 
 		// read response body returns []byte
-		data, err := io.ReadAll(res.Body)
+		data, err = io.ReadAll(res.Body)
 		if err != nil {
 			return fmt.Errorf("Reading Error: %v\n", err)
 		}
-
+		
 		// put data into cache
 		poke_cache.Add(url, data)
 	} else {
 		fmt.Printf("Read from Cache...\n")
 	}
 
+	fmt.Println(string(data))
 	// convert Json to go struct
 	pokeLocations := Location{}
 	err := json.Unmarshal(data, &pokeLocations)

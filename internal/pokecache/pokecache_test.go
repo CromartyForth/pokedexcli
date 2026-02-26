@@ -2,7 +2,6 @@ package pokecache
 
 import (
 	"testing"
-	"time"
 	"fmt"
 )
 
@@ -23,7 +22,7 @@ func TestGetAdd(t *testing.T) {
 		},
 	}
 
-	duration := time.Duration(5) * time.Second
+	duration := 5
 	cache := NewCache(duration)
 
 	for i, c := range cases {
