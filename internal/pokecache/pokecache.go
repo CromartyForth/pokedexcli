@@ -7,10 +7,10 @@ import (
 )
 
 // Initialises a new cache
-func NewCache(duration time.Duration) *Cache {
+func NewCache(duration int) *Cache {
 	newCache := Cache{}
 	newCache.Cache = make(map[string]cacheEntry,0)
-	go newCache.reaper(1)
+	go newCache.reaper(5)
 	return &newCache
 }
 
@@ -18,14 +18,18 @@ func NewCache(duration time.Duration) *Cache {
 func (c *Cache) reaper(duration_seconds int) {
 
 	// tick tock cache!
-	ticker := time.NewTicker(time.Duration(duration_seconds) * time.Second)
+	duration := time.Duration(duration_seconds) * time.Second
+	ticker := time.NewTicker(duration)
 	defer ticker.Stop()
 
 	for t := range ticker.C{
-		// recieve tick
-		//t := <-ticker.C
-		// clean up Cache
-		fmt.Printf("tick at: %v", t)
+		fmt.Printf("Checked Cache at: %v", t)
+		for key, value := range(c.Cache) {
+			if time.Since(value.createdAt) > duration {
+				// delete cache item
+				delete(c.Cache, key)
+			}
+		}
 	}
 }
 

@@ -7,6 +7,7 @@ import (
 	"os"
 	"io"
 )
+
 type Config struct {
 	Next string
 	Previous string
@@ -42,8 +43,13 @@ func getCommands() map[string]CliCommand {
 		},
 		"map": {
 			Name: "map",
-			Description: "Displays the first 20 locations",
+			Description: "Displays the next 20 locations",
 			Callback: commandMap,
+		},
+		"mapb": {
+			Name: "mapb",
+			Description: "Desplays the previous 20 locations",
+			Callback: commandMapb,
 		},
 	}
 	return mapCommands
@@ -63,14 +69,13 @@ func commandHelp(config *Config) error {
 	}
 	return nil
 }
-
-func commandMap(ptrConfig *Config) error {
-	
-	// is repeated call?
-	url := locationsEP
-	if ptrConfig.Next != "" {
-		url = ptrConfig.Next
-	}
+func commandMapb(ptrConfig *Config) error {
+	// is on first page
+	if ptrConfig.Previous == "" {
+		fmt.Println("you're on the first page")
+		return nil
+	} 
+	url := ptrConfig.Previous
 
 	// make api call
 	res, err := http.Get(url)
@@ -83,6 +88,9 @@ func commandMap(ptrConfig *Config) error {
 		return fmt.Errorf("HTTP Status Code: %v\n", res.StatusCode)
 	}
 
+	// add res to cache
+
+
 	// read response body
 	data, err := io.ReadAll(res.Body)
 	if err != nil {
@@ -92,6 +100,60 @@ func commandMap(ptrConfig *Config) error {
 	// convert Json to go struct
 	pokeLocations := Location{}
 	err = json.Unmarshal(data, &pokeLocations)
+	if err != nil {
+		return fmt.Errorf("JSON Error: %v\n", err)
+	}
+
+	// update config with previous and next urls
+	ptrConfig.Next = pokeLocations.Next
+	ptrConfig.Previous = pokeLocations.Previous
+
+	// print out locations
+	for _, location := range(pokeLocations.Results){
+		fmt.Println(location.Name)
+	}
+
+	return nil
+}
+
+func commandMap(ptrConfig *Config) error {
+	
+	// is repeated call?
+	url := locationsEP
+	if ptrConfig.Next != "" {
+		url = ptrConfig.Next
+	}
+
+	// is data already in cache
+	data, ok := poke_cache.Get(url)
+	if ok != true {
+		
+		// make api call
+		res, err := http.Get(url)
+		if err != nil {
+			return fmt.Errorf("Network Error: %v\n", err)
+		}
+		defer res.Body.Close()
+
+		if res.StatusCode > 299 {
+			return fmt.Errorf("HTTP Status Code: %v\n", res.StatusCode)
+		}
+
+		// read response body returns []byte
+		data, err := io.ReadAll(res.Body)
+		if err != nil {
+			return fmt.Errorf("Reading Error: %v\n", err)
+		}
+
+		// put data into cache
+		poke_cache.Add(url, data)
+	} else {
+		fmt.Printf("Read from Cache...\n")
+	}
+
+	// convert Json to go struct
+	pokeLocations := Location{}
+	err := json.Unmarshal(data, &pokeLocations)
 	if err != nil {
 		return fmt.Errorf("JSON Error: %v\n", err)
 	}
