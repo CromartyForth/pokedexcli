@@ -8,9 +8,20 @@ import (
 	"github.com/CromartyForth/pokedexcli/internal/pokecache"
 )
 
-const locationsEP = "https://pokeapi.co/api/v2/location-area/?offset=0&limit=20"
-const cache_duration = 20 * time.Second
+const locationsEP = "https://pokeapi.co/api/v2/location-area/"
+const locationsQuery = "?offset=0&limit=20"
+const pokemonEP = "https://pokeapi.co/api/v2/pokemon/"
+const cache_duration = 100 * time.Second
 var poke_cache = pokecache.NewCache(cache_duration)
+const minXP = 20 // Magikarp
+const maxXP = 608 // Blissy
+const minChance = 10
+const maxChance = 90
+
+
+
+// THE POKEDEX!!
+var pokedex = make(map[string]Pokemon)
 
 func main(){
 
@@ -22,12 +33,21 @@ func main(){
 		if scanner.Scan() == false {
 			break
 		}
-		query := scanner.Text()
-		value, ok := getCommands()[query]
+		text := scanner.Text()
+
+		// clean input into slice
+		query := cleanInput(text)
+
+		// check first item in slice is a valid command
+		value, ok := getCommands()[query[0]]
 		if ok == false {
 			fmt.Println("Unknown command")
 		} else {
-			value.Callback(&pConfig)
+			if len(query) > 1 {
+				value.Callback(&pConfig, query[1])
+			} else {
+				value.Callback(&pConfig, "")
+			}
 		}
 	}
 }

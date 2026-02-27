@@ -51,7 +51,7 @@ func (c *Cache) Get(key string) ([]byte, bool){
     defer c.mu.Unlock()
 	data, ok := c.Cache[key]
 	if ok == false {
-		fmt.Println("Key not in cache")
+		//fmt.Printf("key not in cache")
 		return nil, false
 	}
 	return data.value, true

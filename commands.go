@@ -6,28 +6,8 @@ import (
 	"net/http"
 	"os"
 	"io"
+	"math/rand"
 )
-
-type Config struct {
-	Next string
-	Previous string
-}
-
-type Location struct {
-	Count    int `json:"count"`
-	Next string    `json:"next"`
-	Previous string `json:"previous"`
-	Results []struct {
-		Name string `json:"name"`
-		Url string `json:"url"`
-	}
-}
-
-type CliCommand struct {
-	Name        string
-	Description string
-	Callback    func(*Config) error
-}
 
 func getCommands() map[string]CliCommand {
 	var mapCommands = map[string]CliCommand{
@@ -51,17 +31,27 @@ func getCommands() map[string]CliCommand {
 			Description: "Desplays the previous 20 locations",
 			Callback: commandMapb,
 		},
+		"explore": {
+			Name: "explore",
+			Description: "Displays all the pokemon at a given location\nUsage > explore {location}",
+			Callback: commandExplore,
+		},
+		"catch": {
+			Name: "catch",
+			Description: "Tries to catch a pokemon and add it to your pokedex\nUsage > catch {pokemon}",
+			Callback: commandCatch,
+		},
 	}
 	return mapCommands
 }
 
-func commandExit(config *Config) error {
+func commandExit(config *Config, parameter string) error {
 	fmt.Println("Closing the Pokedex... Goodbye!")
 	os.Exit(0)
 	return nil
 }
 
-func commandHelp(config *Config) error {
+func commandHelp(config *Config, parameter string) error {
 	fmt.Printf("Welcome to the Pokedex!\nUsage:\n")
 	for _, command := range(getCommands()) {
 		// Welcome to the Pokedex!
@@ -69,7 +59,135 @@ func commandHelp(config *Config) error {
 	}
 	return nil
 }
-func commandMapb(ptrConfig *Config) error {
+
+func commandCatch(config *Config, parameter string) error{
+	// check for pokemon user input
+	if parameter == ""{
+		fmt.Println(getCommands()["catch"].Description)
+		return nil
+	}
+	fmt.Printf("Throwing a ball at %v...\n", parameter)
+	url := pokemonEP + parameter
+
+	// is already caught
+	_, ok := pokedex[parameter]
+	if ok == true {
+		fmt.Printf("%v has already been caught!\n", parameter)
+		return nil
+	}
+
+	// check cache and make api call
+	data, ok := poke_cache.Get(url)
+	if ok == false {
+		//fmt.Println("making api call")
+		// make api call
+		res, err := http.Get(url)
+		if err != nil {
+			return fmt.Errorf("Network Error: %v\n", err)
+		}
+		defer res.Body.Close()
+
+		if res.StatusCode > 299 {
+			fmt.Printf("'%v', not sure that was a real pokemon\n", parameter)
+			return fmt.Errorf("HTTP Status Code: %v\n", res.StatusCode)
+		}
+
+		// read response body returns []byte
+		data, err = io.ReadAll(res.Body)
+		if err != nil {
+			return fmt.Errorf("Reading Error: %v\n", err)
+		}
+		
+		// put data into cache
+		poke_cache.Add(url, data)
+	} else {
+		//fmt.Printf("reading from cache\n")
+	}
+
+	// convert Json to go struct
+	pokemon := Pokemon{}
+	err := json.Unmarshal(data, &pokemon)
+	if err != nil {
+		return fmt.Errorf("JSON Error: %v\n", err)
+	}
+
+	// catch Pokemon?
+	// pokemon base XP minus min pokemon xp
+	base := pokemon.BaseExperience - minXP
+	// scale by ratio of spans
+	ratio := (maxChance - minChance) / (maxXP - minXP)
+	scaledBase := base * ratio
+	// add new minimum
+	percentChanceToCatch := scaledBase + minChance
+
+	// get random number in range 1 to 100
+	result := rand.Intn(100)
+	if result < percentChanceToCatch {
+		fmt.Printf("%v escaped!\n", parameter)
+		return nil
+	}
+
+	// add pokemon to pokedex
+	pokedex[parameter] = pokemon
+	fmt.Printf("%v was caught!\n", parameter)
+
+	return nil
+}
+
+func commandExplore(config *Config, parameter string) error{
+	
+	if parameter == ""{
+		fmt.Println(getCommands()["explore"].Description)
+		return nil
+	}
+	fmt.Printf("Exploring %v...", parameter)
+	url := locationsEP + parameter
+	
+	// is data already in cache
+	data, ok := poke_cache.Get(url)
+	if ok == false {
+		fmt.Println("..")
+		// make api call
+		res, err := http.Get(url)
+		if err != nil {
+			return fmt.Errorf("Network Error: %v\n", err)
+		}
+		defer res.Body.Close()
+
+		if res.StatusCode > 299 {
+			fmt.Printf("\nLocation not found, check your entry\n")
+			return fmt.Errorf("HTTP Status Code: %v\n", res.StatusCode)
+		}
+
+		// read response body returns []byte
+		data, err = io.ReadAll(res.Body)
+		if err != nil {
+			return fmt.Errorf("Reading Error: %v\n", err)
+		}
+		
+		// put data into cache
+		poke_cache.Add(url, data)
+	} else {
+		fmt.Printf(".\n")
+	}
+
+	// convert Json to go struct
+	pokeLocations := NamedLocation{}
+	err := json.Unmarshal(data, &pokeLocations)
+	if err != nil {
+		return fmt.Errorf("JSON Error: %v\n", err)
+	}
+
+	// print out Pokemon
+	fmt.Println("Found Pokemon:")
+	for _, location := range(pokeLocations.PokemonEncounters){
+		fmt.Printf(" - %v\n", location.Pokemon.Name)
+	}
+
+	return nil
+}
+
+func commandMapb(ptrConfig *Config, parameter string) error {
 	// is on first page
 	if ptrConfig.Previous == "" {
 		fmt.Println("You're on the first page")
@@ -85,10 +203,10 @@ func commandMapb(ptrConfig *Config) error {
 	return nil
 }
 
-func commandMap(ptrConfig *Config) error {
+func commandMap(ptrConfig *Config, parameter string) error {
 	
 	// is repeated call?
-	url := locationsEP
+	url := locationsEP + locationsQuery
 	if ptrConfig.Next != "" {
 		url = ptrConfig.Next
 	}
@@ -106,7 +224,7 @@ func map_helper(ptrConfig *Config, url string) error {
 	// is data already in cache
 	data, ok := poke_cache.Get(url)
 	if ok == false {
-		fmt.Println("Making API call")
+		fmt.Println("..")
 		// make api call
 		res, err := http.Get(url)
 		if err != nil {
@@ -127,7 +245,7 @@ func map_helper(ptrConfig *Config, url string) error {
 		// put data into cache
 		poke_cache.Add(url, data)
 	} else {
-		fmt.Printf("Read from Cache...\n")
+		fmt.Printf(".\n")
 	}
 
 	// convert Json to go struct
