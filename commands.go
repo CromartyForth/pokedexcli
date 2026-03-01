@@ -47,6 +47,11 @@ func getCommands() map[string]CliCommand {
 			Description: "Displays the stats of any previously caught pokemon\nUsage > inspect {pokemon}",
 			Callback: commandInspect,
 		},
+		"pokedex":{
+			Name: "pokedex",
+			Description: "Displays all the pokemon caught so far",
+			Callback: commandpokedex,
+		},
 	}
 	return mapCommands
 }
@@ -62,6 +67,18 @@ func commandHelp(config *Config, parameter string) error {
 	for _, command := range(getCommands()) {
 		// Welcome to the Pokedex!
 		fmt.Printf("%v: %v\n",command.Name, command.Description)
+	}
+	return nil
+}
+
+func commandpokedex(config *Config, parameter string) error {
+	if len(pokedex) == 0 {
+		fmt.Println("You have yet to catch any pokemon")
+	} else {
+		fmt.Println("Your Pokemon:")
+		for _, pokemon := range pokedex {
+			fmt.Printf(" - %v\n", pokemon.Name)
+		}
 	}
 	return nil
 }

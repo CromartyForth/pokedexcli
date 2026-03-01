@@ -3,7 +3,7 @@ package pokecache
 import (
 	"time"
 	"sync"
-	"fmt"	
+	//"fmt"	
 )
 
 // Initialises a new cache
@@ -28,7 +28,7 @@ func (c *Cache) reaper(duration time.Duration) {
 			if time.Since(value.createdAt) > duration {
 				// delete cache item
 				delete(c.Cache, key)
-				fmt.Println("Cache Item Deleted")
+				//fmt.Println("Cache Item Deleted")
 			}
 		}
 		c.mu.Unlock()
