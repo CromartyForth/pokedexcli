@@ -7,6 +7,7 @@ import (
 	"os"
 	"io"
 	"math/rand"
+	"math"
 )
 
 func getCommands() map[string]CliCommand {
@@ -41,6 +42,11 @@ func getCommands() map[string]CliCommand {
 			Description: "Tries to catch a pokemon and add it to your pokedex\nUsage > catch {pokemon}",
 			Callback: commandCatch,
 		},
+		"inspect":{
+			Name: "Inspect",
+			Description: "Displays the stats of any previously caught pokemon\nUsage > inspect {pokemon}",
+			Callback: commandInspect,
+		},
 	}
 	return mapCommands
 }
@@ -60,13 +66,39 @@ func commandHelp(config *Config, parameter string) error {
 	return nil
 }
 
+func commandInspect(config *Config, parameter string) error {
+	// check for pokemon user input
+	if parameter == ""{
+		fmt.Println(getCommands()["inspect"].Description)
+		return nil
+	}
+
+	// is already caught
+	data, ok := pokedex[parameter]
+	if ok == false {
+		fmt.Println("you have not caught that pokemon")
+		return nil
+	}
+
+	fmt.Printf("Name: %v\nHeight: %v\nWeight: %v\nStats:\n", data.Name, data.Height, data.Weight)
+	for _, value := range data.Stats {
+		fmt.Printf("  -%v: %v\n", value.Stat.Name, value.BaseStat)
+	}
+	fmt.Println("Types:")
+	for _, value := range data.Types {
+		fmt.Printf("  - %v\n", value.Type.Name)
+	}
+
+	return nil
+}
+
 func commandCatch(config *Config, parameter string) error{
 	// check for pokemon user input
 	if parameter == ""{
 		fmt.Println(getCommands()["catch"].Description)
 		return nil
 	}
-	fmt.Printf("Throwing a ball at %v...\n", parameter)
+	fmt.Printf("Throwing a Pokeball at %v...\n", parameter)
 	url := pokemonEP + parameter
 
 	// is already caught
@@ -113,16 +145,21 @@ func commandCatch(config *Config, parameter string) error{
 
 	// catch Pokemon?
 	// pokemon base XP minus min pokemon xp
-	base := pokemon.BaseExperience - minXP
+	base := float64(pokemon.BaseExperience) - minXP
+	fmt.Printf("%v experience: %v\n", parameter, base)
 	// scale by ratio of spans
 	ratio := (maxChance - minChance) / (maxXP - minXP)
 	scaledBase := base * ratio
 	// add new minimum
-	percentChanceToCatch := scaledBase + minChance
+	percentChanceToCatch := math.Round((scaledBase + minChance))
+	fmt.Printf("must roll greater than %.0f to catch %v\n", percentChanceToCatch, parameter)
+
 
 	// get random number in range 1 to 100
 	result := rand.Intn(100)
-	if result < percentChanceToCatch {
+	fmt.Printf("You rolled: %v! - ", result)
+
+	if result < int(percentChanceToCatch) {
 		fmt.Printf("%v escaped!\n", parameter)
 		return nil
 	}

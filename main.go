@@ -13,10 +13,10 @@ const locationsQuery = "?offset=0&limit=20"
 const pokemonEP = "https://pokeapi.co/api/v2/pokemon/"
 const cache_duration = 100 * time.Second
 var poke_cache = pokecache.NewCache(cache_duration)
-const minXP = 20 // Magikarp
-const maxXP = 608 // Blissy
-const minChance = 10
-const maxChance = 90
+const minXP = 20.0// Magikarp
+const maxXP = 608.0 // Blissey
+const minChance = 10.0
+const maxChance = 90.0
 
 
 
